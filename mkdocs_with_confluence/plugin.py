@@ -172,7 +172,10 @@ class MkdocsWithConfluence(BasePlugin):
                     print("DEBUG    - Get section first parent title...: ")
                 try:
 
-                    parent = self.__get_section_title(page.ancestors[0].__repr__())
+                    parent = self.__get_parent_page(page.file.abs_src_path)
+                    if self.config["debug"]:
+                        print(f"DEBUG    - Parent page determined: {parent}")
+
                 except IndexError as e:
                     if self.config["debug"]:
                         print(
@@ -257,6 +260,8 @@ class MkdocsWithConfluence(BasePlugin):
                         f"DEBUG    - PARENT: {parent}\n"
                         f"DEBUG    - BODY: {confluence_body}\n"
                     )
+
+                parent_id = self.ensure_parent_pages_exist(parent, page.file.abs_src_path)
 
                 page_id = self.find_page_id(page.title)
                 if page_id is not None:
@@ -351,6 +356,18 @@ class MkdocsWithConfluence(BasePlugin):
                 return markdown
 
         return markdown
+
+    def ensure_parent_pages_exist(self, parent, file_path):
+        parent_id = None
+        parent_path = os.path.dirname(file_path)
+        parent_pages = parent_path.split(os.sep)
+        for parent_page in parent_pages:
+            if parent_page:
+                parent_page_title = parent_page.replace("_", " ").title()
+                parent_id = self.find_page_id(parent_page_title)
+                if not parent_id:
+                    parent_id = self.add_page(parent_page_title, parent_id, TEMPLATE_BODY.replace("TEMPLATE", parent_page_title))
+        return parent_id
 
     def on_post_page(self, output, page, config):
         site_dir = config.get("site_dir")
@@ -626,3 +643,10 @@ class MkdocsWithConfluence(BasePlugin):
         start = time.time()
         while not condition and time.time() - start < timeout:
             time.sleep(interval)
+
+    def __get_parent_page(self, file_path):
+        parent_path = os.path.dirname(file_path)
+        parent_page = os.path.basename(parent_path)
+        if parent_page == "":
+            return self.config["parent_page_name"]
+        return parent_page.replace("_", " ").title()
