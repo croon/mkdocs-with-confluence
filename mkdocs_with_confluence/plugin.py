@@ -223,6 +223,11 @@ class MkdocsWithConfluence(BasePlugin):
                 if self.config["debug"]:
                     print(f"DEBUG    - PARENT0: {parent}, PARENT1: {parent1}, MAIN PARENT: {main_parent}")
 
+                # Use ConfluenceRenderer to convert Markdown to Confluence storage format
+                confluence_renderer = ConfluenceRenderer()
+                confluence_mistune = mistune.Markdown(renderer=confluence_renderer)
+                confluence_body = confluence_mistune(markdown)
+
                 tf = tempfile.NamedTemporaryFile(delete=False)
                 f = open(tf.name, "w")
 
@@ -247,7 +252,6 @@ class MkdocsWithConfluence(BasePlugin):
                     r'<img src="file:///tmp/', '<p><ac:image ac:height="350"><ri:attachment ri:filename="', markdown
                 )
                 new_markdown = re.sub(r'" style="page-break-inside: avoid;">', '"/></ac:image></p>', new_markdown)
-                confluence_body = self.confluence_mistune(new_markdown)
                 f.write(confluence_body)
                 if self.config["debug"]:
                     print(confluence_body)
