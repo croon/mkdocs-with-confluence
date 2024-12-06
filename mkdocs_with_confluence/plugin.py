@@ -223,8 +223,22 @@ class MkdocsWithConfluence(BasePlugin):
                 if self.config["debug"]:
                     print(f"DEBUG    - PARENT0: {parent}, PARENT1: {parent1}, MAIN PARENT: {main_parent}")
 
+                # Check for unrecognized relative links and append .md if necessary
+                def replace_link(match):
+                    link_text = match.group(1)
+                    link_url = match.group(2)
+                    if not link_url.startswith("http") and not link_url.endswith(".md") and not link_url.startswith("#"):
+                        # Check if the corresponding file exists on disk
+                        if not os.path.exists(os.path.join(os.path.dirname(page.file.abs_src_path), link_url)):
+                            print(f"INFO    -  Doc file '{page.file.src_path}' contains an unrecognized relative link '{link_url}', it was updated to '{link_url}.md'")
+                            link_url += ".md"
+                    return f'[{link_text}]({link_url})'
+
+                # Exclude image links and links with descriptions
+                markdown = re.sub(r'(?<!\!)\[([^\]]+)\]\(([^)]+)\)', replace_link, markdown)
+
                 # Use ConfluenceRenderer to convert Markdown to Confluence storage format
-                confluence_renderer = ConfluenceRenderer()
+                confluence_renderer = ConfluenceRenderer(use_xhtml=True, enable_relative_links=True)
                 confluence_mistune = mistune.Markdown(renderer=confluence_renderer)
                 confluence_body = confluence_mistune(markdown)
 
@@ -439,7 +453,7 @@ class MkdocsWithConfluence(BasePlugin):
         # determine content-type
         content_type, encoding = mimetypes.guess_type(filepath)
         if content_type is None:
-            content_type is "multipart/form-data"
+            content_type == "multipart/form-data"
         files = {"file": (filename, open(Path(filepath), "rb"), content_type), "comment": message}
 
         if not self.dryrun:
@@ -466,7 +480,7 @@ class MkdocsWithConfluence(BasePlugin):
         # determine content-type
         content_type, encoding = mimetypes.guess_type(filepath)
         if content_type is None:
-            content_type is "multipart/form-data"
+            content_type == "multipart/form-data"
         files = {"file": (filename, open(filepath, "rb"), content_type), "comment": message}
         if not self.dryrun:
             r = self.session.post(url, headers=headers, files=files)
